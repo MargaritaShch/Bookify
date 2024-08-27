@@ -1,34 +1,43 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 import random
-import json
 
-#экземпляр FastAPI-приложения
 app = FastAPI()
 
-#эндпоинт для авторизации пользователя
 @app.get("/login/{username}")
 async def login(username: str):
-    #возврат JSON-ответ с токеном(из имени пользователя)
     return {"token": f"Token_{username}"}
 
-#эндпоинт для добавления бронирования
 @app.post("/booking/add")
-async def add_boking(request: Request):
-    #получить данные запрсоа в формате JSON
-    booking_data =  await request.json()
-    srvice_name = booking_data.get("srvice_name")
-    #успешные сообщения
-    response_messages = [
-        f"Услуга '{srvice_name}' забронирована! Готовьтесь к приключениям!",
-        f"Ой! Услуга '{srvice_name}' сейчас на каникулах. Попробуйте выбрать что-то другое.",
-        f"'{srvice_name}' успешно забронирована. Надеемся, у вас нет аллергии!",
-        f"Не удалось забронировать '{srvice_name}'. Виноваты гремлины в системе.",
-        f"'{srvice_name}' забронирована. Возвратов нет, но и сожалений тоже!"
-    ]
-    #возврат рандомного сообщения
-    return {"message": random.choice(response_messages)}
+async def add_booking(request: Request):
+    try:
+        # получить данные запроса в формате JSON
+        booking_data = await request.json()
+        service_name = booking_data.get("service_name")
+        
+        # Проверка, что 'service_name' присутствует и не пустой
+        if not service_name:
+            raise HTTPException(status_code=400, detail="Service name is required")
+
+        # успешные сообщения
+        response_messages = [
+            f"Услуга '{service_name}' забронирована! Готовьтесь к приключениям!",
+            f"Ой! Услуга '{service_name}' сейчас на каникулах. Попробуйте выбрать что-то другое.",
+            f"'{service_name}' успешно забронирована. Надеемся, у вас нет аллергии!",
+            f"Не удалось забронировать '{service_name}'. Виноваты гремлины в системе.",
+            f"'{service_name}' забронирована. Возвратов нет, но и сожалений тоже!"
+        ]
+        return {"message": random.choice(response_messages)}
+
+    except Exception as e:
+        # Логирование ошибок для дальнейшей диагностики
+        print(f"Error in /booking/add: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @app.post("/checkout")
 async def checkout(request: Request):
-    checkout_data = await request.json()
-    return {"message": "Покупка успешно завершена! Время праздновать... или вздремнуть."}
+    try:
+        checkout_data = await request.json()
+        return {"message": "Покупка успешно завершена! Время праздновать... или вздремнуть."}
+    except Exception as e:
+        print(f"Error in /checkout: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
