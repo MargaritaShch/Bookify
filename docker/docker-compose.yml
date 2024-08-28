@@ -1,4 +1,5 @@
-version: '3.9'
+version: '3.8'
+
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
@@ -8,6 +9,8 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - 22181:2181
+    networks:
+      - bookify_default
 
   kafka:
     image: confluentinc/cp-kafka:latest
@@ -15,6 +18,7 @@ services:
     depends_on:
       - zookeeper
     ports:
+      - 9092:9092
       - 29092:29092
     environment:
       KAFKA_BROKER_ID: 1
@@ -23,31 +27,50 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    command: sh -c "
-       ((sleep 15 
-       && kafka-topics --bootstrap-server kafka:29092 --create --topic input-topic --replication-factor 1 --partitions 1 
-       && kafka-topics --bootstrap-server kafka:29092 --create --topic output-topic --replication-factor 1 --partitions 1
-       )&) && /etc/confluent/docker/run 
-       "
+    command:
+      - sh
+      - -c
+      - |
+        sleep 30
+        /usr/bin/kafka-topics --bootstrap-server kafka:9092 --create --topic input-topic --replication-factor 1 --partitions 1 &&
+        /usr/bin/kafka-topics --bootstrap-server kafka:9092 --create --topic output-topic --replication-factor 1 --partitions 1 &&
+        /etc/confluent/docker/run
+    networks:
+      - bookify_default
 
-  mock:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile 
-    container_name: mock
-    command: uvicorn locust_mock:app --host 0.0.0.0 --port 8000
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
     ports:
-      - "8000:8000"
+      - "9100:9100"
+    networks:
+      - bookify_default
+
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:latest
+    container_name: kafka-exporter
+    ports:
+      - "9308:9308"
+    environment:
+      KAFKA_URI: kafka:9092
+    depends_on:
+      - kafka
+    entrypoint: 
+      - sh
+      - -c
+      - 'sleep 60 && /bin/kafka_exporter'  # Увеличьте задержку до 60 секунд
+    networks:
+      - bookify_default
 
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
     volumes:
-      - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
+    networks:
+      - bookify_default
 
   grafana:
     image: grafana/grafana:latest
@@ -58,6 +81,12 @@ services:
       - prometheus
     volumes:
       - grafana-storage:/var/lib/grafana
+    networks:
+      - bookify_default
 
 volumes:
   grafana-storage:
+
+networks:
+  bookify_default:
+    driver: bridge

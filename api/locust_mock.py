@@ -10,15 +10,15 @@ async def login(username: str):
 @app.post("/booking/add")
 async def add_booking(request: Request):
     try:
-        # получить данные запроса в формате JSON
+        #получить данные запроса в формате JSON
         booking_data = await request.json()
         service_name = booking_data.get("service_name")
         
-        # Проверка, что 'service_name' присутствует и не пустой
+        #проверка, что 'service_name' есть и не пустой
         if not service_name:
             raise HTTPException(status_code=400, detail="Service name is required")
 
-        # успешные сообщения
+        #успешные сообщения
         response_messages = [
             f"Услуга '{service_name}' забронирована! Готовьтесь к приключениям!",
             f"Ой! Услуга '{service_name}' сейчас на каникулах. Попробуйте выбрать что-то другое.",
@@ -29,7 +29,7 @@ async def add_booking(request: Request):
         return {"message": random.choice(response_messages)}
 
     except Exception as e:
-        # Логирование ошибок для дальнейшей диагностики
+        #логирование ошибок 
         print(f"Error in /booking/add: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
