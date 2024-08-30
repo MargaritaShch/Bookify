@@ -1,7 +1,30 @@
 from fastapi import FastAPI, Request, HTTPException
+from prometheus_client import Counter, Histogram, make_asgi_app
 import random
+import time
 
 app = FastAPI()
+
+#общее число запросов
+REQUEST_COUNT = Counter('http_requests_total', 'Total HTTP requests', ['method', 'endpoint', 'http_status'])
+#время отклика
+REQUEST_LATENCY = Histogram('http_request_duration_seconds', 'HTTP request latency', ['endpoint'])
+
+#экспорт метрик в /metrics
+metrics_app = make_asgi_app()
+#монтирование в FastAPI
+app.mount("/metrics", metrics_app)
+
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    #время на обработку запросов
+    process_time = time.time() - start_time
+    REQUEST_LATENCY.labels(endpoint=request.url.path).observe(process_time)
+    #увеличение счетчика
+    REQUEST_COUNT.labels(method=request.method, endpoint=request.url.path, http_status=response.status_code).inc()
+    return response
 
 @app.get("/login/{username}")
 async def login(username: str):
