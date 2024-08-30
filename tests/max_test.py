@@ -1,23 +1,36 @@
-from locust import HttpUser, task, TaskSet, constant_pacing
+from locust import LoadTestShape
+import time
 
-class UserBehavior(TaskSet):
+class StagesShape(LoadTestShape):
+    """
+    настройка этапов нагрузки в Locust
 
-    @task(1) #вес задачи(вероятность выполнения)
-    def perform_login(self):
-        self.client.get("/login/testuser")
+    атрибуты:
+        stages (list): список этапов нагрузки с параметрами.
+    """
+    
+    def_counter: int = int(time.time())
 
-    @task(5)
-    def perform_add_booking(self):
-        #запрос к эндпоинту с json-данными
-        self.client.post("/booking/add", json={"service_name": "massage"})
+    stages = [
+        {"duration": 60, "users": 10, "spawn_rate": 1},
+        {"duration": 120, "users": 20, "spawn_rate": 2},
+        {"duration": 180, "users": 40, "spawn_rate": 5},
+        {"duration": 240, "users": 70, "spawn_rate": 10},
+        {"duration": 300, "users": 100, "spawn_rate": 10}
+    ]
 
-    @task(4)
-    def perform_checkout(self):
-        self.client.post("/checkout", json = {"order_id": 1234})
+    def tick(self):
+        """
+        метод определения текущего этапа нагрузки в зависимости от прошедшего времени.
 
-class PerfomanceUser(HttpUser):
-    #поведение пользователя
-    tasks = [UserBehavior]
-    #пейсинг
-    wait_time = constant_pacing(5)
-    host = "http://localhost:8000"
+        Returns:
+            tuple: Возвращает количество пользователей и скорость их запуска.
+        """
+        run_time = self.get_run_time()
+
+        for stage in self.stages:
+            if run_time < stage["duration"]:
+                tick_data = (stage["users"], stage["spawn_rate"])
+                return tick_data
+
+        return None

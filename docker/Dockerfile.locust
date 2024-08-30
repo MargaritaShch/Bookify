@@ -1,0 +1,19 @@
+# Dockerfile.locust
+FROM python:3.12.5-slim
+
+WORKDIR /mock
+
+# Копируем файл requirements.txt из директории api
+COPY ./api/requirements.txt . 
+
+# Устанавливаем зависимости
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Копируем необходимые файлы для Locust
+COPY ./api/locust_mock.py .
+COPY ./scripts/user_behavior.py .
+COPY ./tests/max_test.py .
+COPY ./locustfile.py .
+
+# Команда для запуска Locust
+CMD ["locust", "-f", "locustfile.py", "--host", "http://api-server:8000"]

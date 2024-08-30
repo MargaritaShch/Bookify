@@ -2,15 +2,15 @@ FROM confluentinc/cp-kafka:latest
 
 USER root
 
-# Используйте yum для установки wget и curl
+#yum для установки wget и curl
 RUN yum update -y && yum install -y wget curl
 
-# Скачиваем и распаковываем Kafka Utils
+#скачивание Kafka Utils
 RUN mkdir -p /opt/kafka-utils && cd /opt/kafka-utils && \
     wget https://archive.apache.org/dist/kafka/2.7.0/kafka_2.12-2.7.0.tgz && \
     tar -xzf kafka_2.12-2.7.0.tgz && rm kafka_2.12-2.7.0.tgz
 
-# Добавляем Kafka Utils в PATH
+#Kafka Utils в PATH
 ENV PATH="/opt/kafka-utils/kafka_2.12-2.7.0/bin:$PATH"
 
 USER appuser
